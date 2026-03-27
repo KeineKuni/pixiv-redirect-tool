@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>萬用跳轉工具</title>
+    <title>萬用跳轉工具 V3</title>
     <link rel="icon" href="https://s.pximg.net/www/js/fanbox/0896cd39e7c7fd62f3ae116926159da0.svg">
     <style>
         body {
             font-family: "SF Pro Display", "Microsoft JhengHei", sans-serif;
             margin: 0; padding: 0;
-            background-color: #0f1214;
+            background-color: #0d1117;
             color: #ffffff;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            overflow: hidden;
-            transition: all 0.3s ease;
+            transition: all 0.4s ease;
         }
         .container { text-align: center; pointer-events: none; z-index: 10; }
         .pixiv-logo {
@@ -25,38 +24,33 @@
             background-image: url('https://i.postimg.cc/9Q24Z9Yn/unnamed.webp');
             background-size: cover;
             background-position: center;
-            border-radius: 28px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-radius: 30px;
+            box-shadow: 0 10px 40px rgba(0, 150, 250, 0.3);
         }
         h2 {
-            font-size: 1.6rem; margin-bottom: 12px;
-            background: linear-gradient(45deg, #0096fa, #00ffa3);
+            font-size: 1.8rem; margin: 0 0 10px 0;
+            background: linear-gradient(135deg, #58a6ff, #3fb950);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
         .hint-box {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px 25px; border-radius: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 20px; border-radius: 18px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #888; font-size: 0.85rem; line-height: 1.6;
+            color: #8b949e; font-size: 0.9rem;
         }
-        code { color: #0096fa; background: rgba(0, 150, 250, 0.1); padding: 2px 4px; border-radius: 4px; }
-        body.drag-active { background-color: #162635; box-shadow: inset 0 0 100px rgba(0, 150, 250, 0.2); }
-        body.drag-active::after {
-            content: ""; position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px;
-            border: 3px dashed #0096fa; border-radius: 20px; opacity: 0.5;
-        }
-        body.drag-active .pixiv-logo { transform: scale(1.1) rotate(-3deg); }
+        code { color: #58a6ff; background: rgba(88, 166, 255, 0.1); padding: 2px 5px; border-radius: 4px; }
+        body.drag-active { background-color: #090c10; transform: scale(0.98); }
+        body.drag-active .pixiv-logo { transform: scale(1.1); box-shadow: 0 0 50px rgba(88, 166, 255, 0.5); }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div class="pixiv-logo"></div>
-        <h2>自動識別跳轉</h2>
+        <h2>全格式自動跳轉</h2>
         <div class="hint-box">
-            把檔案丟進來即可跳轉<br>
-            支援 <code>Pixiv (數字)</code> 與 <code>Iwara (英數混合)</code>
+            支援 <b>Iwara</b> (英數混合) 與 <b>Pixiv</b> (純數字)<br>
+            <span style="font-size: 0.8rem; opacity: 0.7;">甚至支援純 ID 檔名：<code>DawqwSE...mp4</code></span>
         </div>
     </div>
 
@@ -79,34 +73,33 @@
 
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                const fileName = files[0].name;
+                // 去掉副檔名，只拿主檔名
+                const fullFileName = files[0].name;
+                const fileName = fullFileName.split('.').slice(0, -1).join('.') || fullFileName;
 
                 /**
-                 * 1. 偵測 Iwara ID
-                 * 邏輯：尋找包含大小寫英文+數字，且長度在 10-15 位之間的獨立區塊
-                 * 使用 Lookbehind/Lookahead 確保它不是長字串的一部分
+                 * 1. 廣域 Iwara 識別
+                 * 匹配 10-20 位由大小寫英文與數字組成的字串
                  */
-                const iwaraMatch = fileName.match(/(?:^|[^a-zA-Z0-9])([a-zA-Z0-9]{10,15})(?:[^a-zA-Z0-9]|$)/);
+                const iwaraMatches = fileName.match(/[a-zA-Z0-9]{10,20}/g);
                 
-                // 排除純數字（避免跟 Pixiv 衝突）
-                const isPureNumber = iwaraMatch && /^\d+$/.test(iwaraMatch[1]);
+                // 過濾掉純數字（因為純數字可能是 Pixiv ID）
+                const iwaraId = iwaraMatches ? iwaraMatches.find(id => /[a-zA-Z]/.test(id)) : null;
 
                 /**
-                 * 2. 偵測 Pixiv ID
-                 * 邏輯：5-10 位純數字
+                 * 2. 廣域 Pixiv 識別
+                 * 匹配 5-11 位純數字
                  */
-                const pixivMatch = fileName.match(/(?:^|[^0-9])(\d{5,10})(?:[^0-9]|$)/);
+                const pixivMatch = fileName.match(/\d{5,11}/);
 
-                if (iwaraMatch && !isPureNumber) {
-                    // 只要包含英文+數字混合，判定為 Iwara
-                    const iwaraId = iwaraMatch[1];
+                if (iwaraId) {
+                    // 優先跳轉 Iwara，因為規則更嚴格（需含英文）
                     window.location.href = `https://www.iwara.tv/video/${iwaraId}`;
                 } else if (pixivMatch) {
-                    // 純數字判定為 Pixiv
-                    const pixivId = pixivMatch[1];
-                    window.location.href = `https://www.pixiv.net/artworks/${pixivId}`;
+                    // 若無 Iwara 特徵，則檢查是否有純數字
+                    window.location.href = `https://www.pixiv.net/artworks/${pixivMatch[0]}`;
                 } else {
-                    alert("無法識別此檔案！\n\n偵測到的檔名：\n" + fileName);
+                    alert("無法自動識別 ID！\n\n檔名：" + fullFileName);
                 }
             }
         });
