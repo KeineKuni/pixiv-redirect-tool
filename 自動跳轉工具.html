@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixiv自動跳轉</title>
+    <title>跨平台自動跳轉 (Pixiv / Iwara)</title>
     <link rel="icon" href="https://s.pximg.net/www/js/fanbox/0896cd39e7c7fd62f3ae116926159da0.svg">
     <style>
         body {
@@ -22,6 +22,7 @@
         .pixiv-logo {
             width: 120px; height: 120px;
             margin: 0 auto 30px auto;
+            /* 換了一個較中性的圖標，或保留原本的 Pixiv Logo */
             background-image: url('https://i.postimg.cc/9Q24Z9Yn/unnamed.webp');
             background-size: cover;
             background-position: center;
@@ -31,16 +32,15 @@
         }
         h2 {
             font-size: 1.6rem; margin-bottom: 12px;
-            background: linear-gradient(45deg, #fff, #aaa);
+            background: linear-gradient(45deg, #fff, #0096fa);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
         .hint-box {
             background: rgba(255, 255, 255, 0.05);
             padding: 15px 25px; border-radius: 15px;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #999; font-size: 0.9rem;
         }
-        p { font-size: 0.95rem; color: #999; margin: 5px 0; }
-        code { color: #0096fa; background: rgba(0, 150, 250, 0.1); padding: 2px 6px; border-radius: 4px; }
         body.drag-active { background-color: #162635; box-shadow: inset 0 0 100px rgba(0, 150, 250, 0.2); }
         body.drag-active::after {
             content: ""; position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px;
@@ -53,7 +53,10 @@
 
     <div class="container">
         <div class="pixiv-logo"></div>
-        <h2>Pixiv 自動跳轉</h2>
+        <h2>自動識別跳轉</h2>
+        <div class="hint-box">
+            支援 Pixiv ID 或 Iwara 影片編號
+        </div>
     </div>
 
     <script>
@@ -77,16 +80,21 @@
             if (files.length > 0) {
                 const fileName = files[0].name;
                 
-                // 強化版 Regex：尋找 5-9 位的獨立數字區塊
-                const match = fileName.match(/(?:^|[^0-9])(\d{5,9})(?:[^0-9]|$)/);
-                
-                if (match) {
-                    // match[1] 是括號中抓到的數字部分
-                    const pixivId = match[1];
-                    const url = `https://www.pixiv.net/artworks/${pixivId}`;
-                    window.location.href = url;
+                // 1. 偵測 Iwara 特徵：尋找中括號內的英數組合 (如 [ML7Y5xvaWjue8i])
+                // 規則：[ 之後接 10-15 位大小寫英數，之後接 ]
+                const iwaraMatch = fileName.match(/\[([a-zA-Z0-9]{10,15})\]/);
+
+                // 2. 偵測 Pixiv 特徵：原本的 5-9 位純數字
+                const pixivMatch = fileName.match(/(?:^|[^0-9])(\d{5,9})(?:[^0-9]|$)/);
+
+                if (iwaraMatch) {
+                    const iwaraId = iwaraMatch[1];
+                    window.location.href = `https://www.iwara.tv/video/${iwaraId}`;
+                } else if (pixivMatch) {
+                    const pixivId = pixivMatch[1];
+                    window.location.href = `https://www.pixiv.net/artworks/${pixivId}`;
                 } else {
-                    alert("識別失敗！檔名中找不到 5~9 位的 ID。\n檔名：" + fileName);
+                    alert("識別失敗！\n找不到 Iwara 編號或 Pixiv ID。\n檔名：" + fileName);
                 }
             }
         });
