@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>萬用跳轉工具 V3.2</title>
+    <title>萬用跳轉工具 V3.3</title>
     <link rel="icon" href="https://s.pximg.net/www/js/fanbox/0896cd39e7c7fd62f3ae116926159da0.svg">
     <style>
         body {
@@ -15,7 +15,10 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            transition: background-color 0.4s ease, transform 0.4s ease;
+            box-sizing: border-box;
+            /* 新增：預留一個隱形的透明外框，避免拖曳激活時畫面因外框寬度而抖動 */
+            border: 4px solid transparent;
+            transition: background-color 0.4s ease, transform 0.4s ease, border-color 0.3s ease;
         }
         .container { text-align: center; z-index: 10; width: 100%; max-width: 400px; padding: 20px; box-sizing: border-box; }
         .pixiv-logo {
@@ -74,10 +77,17 @@
             padding: 20px; border-radius: 18px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: #8b949e; font-size: 0.9rem;
-            pointer-events: none; /* 避免干擾拖曳 */
+            pointer-events: none;
         }
         code { color: #58a6ff; background: rgba(88, 166, 255, 0.1); padding: 2px 5px; border-radius: 4px; }
-        body.drag-active { background-color: #090c10; transform: scale(0.98); }
+        
+        /* 新增/優化：拖曳激活時的虛線效果與縮放 */
+        body.drag-active { 
+            background-color: #090c10; 
+            transform: scale(0.98);
+            border-color: #58a6ff;
+            border-style: dashed;
+        }
         body.drag-active .pixiv-logo { transform: scale(1.15); box-shadow: 0 0 50px rgba(88, 166, 255, 0.5); }
     </style>
 </head>
@@ -88,13 +98,13 @@
         <h2>全格式自動跳轉</h2>
         
         <div class="input-group">
-            <input type="text" id="urlInput" class="input-field" placeholder="輸入 ID、檔名或網址..." autofocus>
+            <input type="text" id="urlInput" class="input-field" placeholder="輸入或貼上 ID / 檔名..." autofocus>
             <button id="goBtn" class="submit-btn">跳轉</button>
         </div>
 
         <div class="hint-box">
-            支援 <b>Iwara</b> (英數混合) 與 <b>Pixiv</b> (純數字)<br>
-            <span style="font-size: 0.8rem; opacity: 0.7;">可直接拖曳檔案，或輸入 ID 按 Enter 跳轉</span>
+            支援 <b>Iwara</b> (英數) 與 <b>Pixiv</b> (純數字)<br>
+            <span style="font-size: 0.8rem; opacity: 0.7;">可直接拖曳檔案、輸入、或在頁面直接 <b>Ctrl+V</b> 貼上跳轉</span>
         </div>
     </div>
 
@@ -126,7 +136,7 @@
             } else if (pixivMatch) {
                 window.location.href = `https://www.pixiv.net/artworks/${pixivMatch[0]}`;
             } else {
-                alert("無法自動識別 ID！\n\n輸入內容：" + trimmedText);
+                alert("無法自動識別 ID！\n\n內容：" + trimmedText);
             }
         }
 
@@ -142,7 +152,19 @@
             }
         });
 
-        // --- 拖曳檔案邏輯（維持並優化） ---
+        // --- 新增功能：監聽全域貼上事件 ---
+        window.addEventListener('paste', (e) => {
+            // 取得剪貼簿裡的文字
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            if (pastedText) {
+                // 將貼上的文字也同步塞入輸入框，方便使用者視覺確認
+                urlInput.value = pastedText;
+                // 直接執行跳轉
+                handleRedirect(pastedText);
+            }
+        });
+
+        // --- 拖曳檔案邏輯（保留並加上虛線控制） ---
         window.addEventListener('dragover', (e) => {
             e.preventDefault();
             body.classList.add('drag-active');
@@ -159,7 +181,6 @@
 
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                // 直接丟給核心邏輯辨識完整檔名
                 handleRedirect(files[0].name);
             }
         });
